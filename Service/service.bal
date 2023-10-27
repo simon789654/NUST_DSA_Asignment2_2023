@@ -9,15 +9,11 @@ import ballerina/crypto;
 // import ballerina/lang.'string;
 
 
-mysql:Client p1DB = check new("localhost", "root", "root", "assignment-2-p1", 3307);
+mysql:Client p1DB = check new("localhost", "root", "", "assignment2", 3307);
 
 
 // At the top level of your module
 map<string> authenticatedUsers = {};
-
-function isAuthenticated(string token) returns boolean {
-    return authenticatedUsers.hasKey(token);
-}
 
 service /graphql on new graphql:Listener(8080) {
 
@@ -25,11 +21,8 @@ service /graphql on new graphql:Listener(8080) {
         // Queries
         
     resource function get user(int id, string token) returns User|error {
-        if (!isAuthenticated(token)) {
-            return error("Authentication failed. Please log in.");
-        }
 
-        sql:ParameterizedQuery query = `SELECT * FROM Users WHERE id = ${id}`;
+        sql:ParameterizedQuery query = `SELECT * FROM user WHERE id = ${id}`;
         stream<User, sql:Error?> resultStream = p1DB->query(query, User);
 
         record {| User value; |}? result = check resultStream.next();
@@ -51,10 +44,7 @@ service /graphql on new graphql:Listener(8080) {
 
     //fecth department by ID
     resource function get department(int id, string token) returns Department|error {
-        if (!isAuthenticated(token)) {
-            return error("Authentication failed. Please log in.");
-        }
-        sql:ParameterizedQuery depQuery = `SELECT * FROM Departments WHERE id = ${id}`;
+        sql:ParameterizedQuery depQuery = `SELECT * FROM department WHERE id = ${id}`;
         stream<Department, sql:Error?> depStream = p1DB->query(depQuery);
 
         record {| Department value; |}? depResult = check depStream.next();
@@ -64,7 +54,7 @@ service /graphql on new graphql:Listener(8080) {
 
             // If the hodId is present in the department, fetch the corresponding User
             if (dept.hodId is int) {
-                sql:ParameterizedQuery hodQuery = `SELECT * FROM Users WHERE id = ${dept.hodId}`;
+                sql:ParameterizedQuery hodQuery = `SELECT * FROM user WHERE id = ${dept.hodId}`;
                 stream<User, sql:Error?> hodStream = p1DB->query(hodQuery, User);
                 record {| User value; |}? hodResult = check hodStream.next();
                 if (hodResult is record {| User value; |}) {
@@ -84,33 +74,14 @@ service /graphql on new graphql:Listener(8080) {
 
     //fetch department objective by ID
     resource function get departmentObjective(int id, string token) returns DepartmentObjective|error {
-            if (!isAuthenticated(token)) {
-                return error("Authentication failed. Please log in.");
-            }
-        sql:ParameterizedQuery objQuery = `SELECT * FROM DepartmentObjectives WHERE id = ${id}`;
+
+        sql:ParameterizedQuery objQuery = `SELECT * FROM departmentobjective WHERE id = ${id}`;
         stream<DepartmentObjective, sql:Error?> objStream = p1DB->query(objQuery);
 
         record {| DepartmentObjective value; |}? objResult = check objStream.next();
 
         if (objResult is record {| DepartmentObjective value; |}) {
             DepartmentObjective obj = objResult.value;
-
-            // Fetch related KPIs for this objective
-            sql:ParameterizedQuery kpiQuery = `
-                SELECT KPIs.* 
-                FROM KPIs 
-                JOIN ObjectiveKPIRelation ON KPIs.id = ObjectiveKPIRelation.kpiId
-                WHERE ObjectiveKPIRelation.objectiveId = ${id}`;
-            stream<KPI, sql:Error?> kpiStream = p1DB->query(kpiQuery);
-            KPI[] kpis = [];
-            error? kpiErr = kpiStream.forEach(function(KPI kpi) {
-                kpis.push(kpi);
-            });
-            if (kpiErr is error) {
-                return kpiErr;
-            }
-            obj.relatedKPIs = kpis;
-
             return obj;
         } else {
             return error("DepartmentObjective not found");
@@ -119,36 +90,14 @@ service /graphql on new graphql:Listener(8080) {
 
 
     //fetch KPI by ID
-    resource function get kpi(int id, string token) returns KPI|error {
-            if (!isAuthenticated(token)) {
-                return error("Authentication failed. Please log in.");
-            }        
-        sql:ParameterizedQuery kpiQuery = `SELECT * FROM KPIs WHERE id = ${id}`;
+    resource function get kpi(int id, string token) returns KPI|error {     
+        sql:ParameterizedQuery kpiQuery = `SELECT * FROM kpi WHERE id = ${id}`;
         stream<KPI, sql:Error?> kpiStream = p1DB->query(kpiQuery);
 
         record {| KPI value; |}? kpiResult = check kpiStream.next();
 
         if (kpiResult is record {| KPI value; |}) {
             KPI kpi = kpiResult.value;
-
-            // Fetch related objectives for this KPI
-            sql:ParameterizedQuery objQuery = `
-                SELECT DepartmentObjectives.* 
-                FROM DepartmentObjectives 
-                JOIN ObjectiveKPIRelation ON DepartmentObjectives.id = ObjectiveKPIRelation.objectiveId
-                WHERE ObjectiveKPIRelation.kpiId = ${id}`;
-            stream<DepartmentObjective, sql:Error?> objStream = p1DB->query(objQuery);
-
-            DepartmentObjective[] objs = [];
-            error? objStreamErr = objStream.forEach(function(DepartmentObjective obj) {
-                objs.push(obj);
-            });
-
-            if (objStreamErr is error) {
-                return objStreamErr;
-            }
-
-            kpi.relatedObjectives = objs;
 
             return kpi;
         } else {
@@ -159,11 +108,7 @@ service /graphql on new graphql:Listener(8080) {
 
     //fetch all users
     resource function get users(string token) returns User[]|error {
-            if (!isAuthenticated(token)) {
-                return error("Authentication failed. Please log in.");
-            }
-
-        sql:ParameterizedQuery userQuery = `SELECT * FROM Users`;
+        sql:ParameterizedQuery userQuery = `SELECT * FROM user`;
         stream<User, sql:Error?> userStream = p1DB->query(userQuery);
         User[] users = [];
         
@@ -182,11 +127,7 @@ service /graphql on new graphql:Listener(8080) {
 
     //fetch all departments
     resource function get departments(string token) returns Department[]|error {
-            if (!isAuthenticated(token)) {
-                return error("Authentication failed. Please log in.");
-            }
-
-        sql:ParameterizedQuery depQuery = `SELECT * FROM Departments`;
+        sql:ParameterizedQuery depQuery = `SELECT * FROM department`;
         stream<Department, sql:Error?> depStream = p1DB->query(depQuery);
         
         Department[] departments = [];
@@ -204,11 +145,7 @@ service /graphql on new graphql:Listener(8080) {
 
     //fetch all department objectives
     resource function get departmentObjectives(string token) returns DepartmentObjective[]|error {
-            if (!isAuthenticated(token)) {
-                return error("Authentication failed. Please log in.");
-            }
-
-        sql:ParameterizedQuery objQuery = `SELECT * FROM DepartmentObjectives`;
+        sql:ParameterizedQuery objQuery = `SELECT * FROM departmentobjective`;
         stream<DepartmentObjective, sql:Error?> objStream = p1DB->query(objQuery);
 
         DepartmentObjective[] objectives = [];
@@ -228,10 +165,6 @@ service /graphql on new graphql:Listener(8080) {
 
     //fetch all KPIS
     resource function get kpis(string token) returns KPI[]|error {
-            if (!isAuthenticated(token)) {
-                return error("Authentication failed. Please log in.");
-            }
-
         sql:ParameterizedQuery kpiQuery = `SELECT * FROM KPIs`;
         stream<KPI, sql:Error?> kpiStream = p1DB->query(kpiQuery);
 
@@ -248,18 +181,9 @@ service /graphql on new graphql:Listener(8080) {
         return kpis;
     }
 
-    //MUTATIONS
-    //MUTATIONS
-    //MUTATIONS
-    //MUTATIONS
 
     resource function get createUser(string firstName, string lastName, string jobTitle, string position, UserRole role, int departmentId, string token) returns User|error {
-        
-            if (!isAuthenticated(token)) {
-                return error("Authentication failed. Please log in.");
-            }
-
-        sql:ParameterizedQuery query = `INSERT INTO Users(firstName, lastName, jobTitle, position, role, departmentId) VALUES(${firstName}, ${lastName}, ${jobTitle}, ${position}, ${role}, ${departmentId})`;
+        sql:ParameterizedQuery query = `INSERT INTO user(firstName, lastName, jobTitle, position, role, departmentId) VALUES(${firstName}, ${lastName}, ${jobTitle}, ${position}, ${role}, ${departmentId})`;
         
         var response = p1DB->execute(query);
         
@@ -295,12 +219,7 @@ service /graphql on new graphql:Listener(8080) {
 
     // update user mutation
     resource function get updateUser(int id, string firstName, string lastName, string jobTitle, string position, UserRole role, int departmentId, string token) returns User|error {
-            if (!isAuthenticated(token)) {
-                return error("Authentication failed. Please log in.");
-            }
-
-        
-        sql:ParameterizedQuery query = `UPDATE Users SET firstName=${firstName}, lastName=${lastName}, jobTitle=${jobTitle}, position=${position}, role=${role}, departmentId=${departmentId} WHERE id=${id}`;
+        sql:ParameterizedQuery query = `UPDATE user SET firstName=${firstName}, lastName=${lastName}, jobTitle=${jobTitle}, position=${position}, role=${role}, departmentId=${departmentId} WHERE id=${id}`;
         
         var response = p1DB->execute(query);
         
@@ -322,11 +241,8 @@ service /graphql on new graphql:Listener(8080) {
 
 
     resource function get deleteUser(int id, string token) returns boolean|error {
-            if (!isAuthenticated(token)) {
-                return error("Authentication failed. Please log in.");
-            }        
-        
-        sql:ParameterizedQuery query = `DELETE FROM Users WHERE id=${id}`;
+
+        sql:ParameterizedQuery query = `DELETE FROM user WHERE id=${id}`;
         
         var response = p1DB->execute(query);
         
@@ -339,11 +255,7 @@ service /graphql on new graphql:Listener(8080) {
 
 
     resource function get createDepartment(string name, string token) returns Department|error {
-            if (!isAuthenticated(token)) {
-                return error("Authentication failed. Please log in.");
-            }        
-        
-        sql:ParameterizedQuery query = `INSERT INTO Departments(name) VALUES(${name})`;
+        sql:ParameterizedQuery query = `INSERT INTO department(name) VALUES(${name})`;
         
         var response = p1DB->execute(query);
         
@@ -367,11 +279,7 @@ service /graphql on new graphql:Listener(8080) {
 
 
     resource function get updateDepartment(int id, string name, string token) returns Department|error {
-            if (!isAuthenticated(token)) {
-                return error("Authentication failed. Please log in.");
-            }        
-        
-        sql:ParameterizedQuery query = `UPDATE Departments SET name=${name} WHERE id=${id}`;
+        sql:ParameterizedQuery query = `UPDATE department SET name=${name} WHERE id=${id}`;
         
         var response = p1DB->execute(query);
         
@@ -387,12 +295,9 @@ service /graphql on new graphql:Listener(8080) {
     }
 
 
-    resource function get deleteDepartment(int id, string token) returns boolean|error {
-            if (!isAuthenticated(token)) {
-                return error("Authentication failed. Please log in.");
-            }        
+    resource function get deleteDepartment(int id, string token) returns boolean|error {       
         
-        sql:ParameterizedQuery query = `DELETE FROM Departments WHERE id=${id}`;
+        sql:ParameterizedQuery query = `DELETE FROM department WHERE id=${id}`;
         
         var response = p1DB->execute(query);
         
@@ -405,11 +310,9 @@ service /graphql on new graphql:Listener(8080) {
 
 
     resource function get createDepartmentObjective(string name, float weight, int departmentId, string token) returns DepartmentObjective|error {
-            if (!isAuthenticated(token)) {
-                return error("Authentication failed. Please log in.");
-            }        
+    
         
-        sql:ParameterizedQuery query = `INSERT INTO DepartmentObjectives(name, weight, departmentId) VALUES(${name}, ${weight}, ${departmentId})`;
+        sql:ParameterizedQuery query = `INSERT INTO DepartmentObjective(name, weight, departmentId) VALUES(${name}, ${weight}, ${departmentId})`;
         
         var response = p1DB->execute(query);
         
@@ -435,11 +338,9 @@ service /graphql on new graphql:Listener(8080) {
 
 
     resource function get updateDepartmentObjective(int id, string name, float weight, string token) returns DepartmentObjective|error {
-            if (!isAuthenticated(token)) {
-                return error("Authentication failed. Please log in.");
-            }        
+    
         
-        sql:ParameterizedQuery query = `UPDATE DepartmentObjectives SET name=${name}, weight=${weight} WHERE id=${id}`;
+        sql:ParameterizedQuery query = `UPDATE DepartmentObjective SET name=${name}, weight=${weight} WHERE id=${id}`;
         
         var response = p1DB->execute(query);
         
@@ -452,10 +353,6 @@ service /graphql on new graphql:Listener(8080) {
 
 
     resource function get deleteDepartmentObjective(int id, string token) returns boolean|error {
-        
-            if (!isAuthenticated(token)) {
-                return error("Authentication failed. Please log in.");
-            }
 
         sql:ParameterizedQuery query = `DELETE FROM DepartmentObjectives WHERE id=${id}`;
         
@@ -470,11 +367,9 @@ service /graphql on new graphql:Listener(8080) {
 
 
     resource function get createKPI(int userId, string name, string metric, string unit, string token) returns KPI|error {
-            if (!isAuthenticated(token)) {
-                return error("Authentication failed. Please log in.");
-            }
 
-        sql:ParameterizedQuery query = `INSERT INTO KPIs(userId, name, metric, unit) VALUES(${userId}, ${name}, ${metric}, ${unit})`;
+
+        sql:ParameterizedQuery query = `INSERT INTO kpi(userId, name, metric, unit) VALUES(${userId}, ${name}, ${metric}, ${unit})`;
         var response = p1DB->execute(query);
         
         if (response is sql:ExecutionResult) {
@@ -495,11 +390,9 @@ service /graphql on new graphql:Listener(8080) {
 
 
     resource function get updateKPI(int id, int userId, string name, string metric, string unit, float score, string token) returns KPI|error {
-            if (!isAuthenticated(token)) {
-                return error("Authentication failed. Please log in.");
-            }
 
-        sql:ParameterizedQuery query = `UPDATE KPIs SET userId=${userId}, name=${name}, metric=${metric}, unit=${unit}, score=${score} WHERE id=${id}`;
+
+        sql:ParameterizedQuery query = `UPDATE kpi SET userId=${userId}, name=${name}, metric=${metric}, unit=${unit}, score=${score} WHERE id=${id}`;
         var response = p1DB->execute(query);
         
         if (response is sql:ExecutionResult) {
@@ -519,11 +412,9 @@ service /graphql on new graphql:Listener(8080) {
 
 
     resource function get deleteKPI(int id, string token) returns boolean|error {
-            if (!isAuthenticated(token)) {
-                return error("Authentication failed. Please log in.");
-            }
 
-        sql:ParameterizedQuery query = `DELETE FROM KPIs WHERE id=${id}`;
+
+        sql:ParameterizedQuery query = `DELETE FROM kpi WHERE id=${id}`;
         var response = p1DB->execute(query);
         
         if (response is sql:ExecutionResult) {
@@ -536,11 +427,9 @@ service /graphql on new graphql:Listener(8080) {
 
     // Allow Supervisor to approve an Employee's KPIs
     resource function get approveKPI(int supervisorId, int kpiId, string token) returns boolean|error {
-            if (!isAuthenticated(token)) {
-                return error("Authentication failed. Please log in.");
-            }
 
-        sql:ParameterizedQuery query = `UPDATE KPIs SET approved=true WHERE id=${kpiId} AND userId IN (SELECT id FROM Users WHERE supervisorId=${supervisorId})`;
+
+        sql:ParameterizedQuery query = `UPDATE kpi SET approved=true WHERE id=${kpiId} AND userId IN (SELECT id FROM Users WHERE supervisorId=${supervisorId})`;
         var response = p1DB->execute(query);
 
         if (response is sql:ExecutionResult) {
@@ -552,11 +441,9 @@ service /graphql on new graphql:Listener(8080) {
 
     // Allow Supervisor to grade an Employee's KPIs
     resource function get gradeKPI(int supervisorId, int kpiId, float grade, string token) returns boolean|error {
-            if (!isAuthenticated(token)) {
-                return error("Authentication failed. Please log in.");
-            }
 
-        sql:ParameterizedQuery query = `UPDATE KPIs SET grade=${grade} WHERE id=${kpiId} AND userId IN (SELECT id FROM Users WHERE supervisorId=${supervisorId})`;
+
+        sql:ParameterizedQuery query = `UPDATE kpi SET grade=${grade} WHERE id=${kpiId} AND userId IN (SELECT id FROM Users WHERE supervisorId=${supervisorId})`;
         var response = p1DB->execute(query);
 
         if (response is sql:ExecutionResult) {
@@ -567,9 +454,7 @@ service /graphql on new graphql:Listener(8080) {
     }
     // Allow Employee to update their own KPIs
     resource function get updateMyKPI(int userId, int kpiId, string name, string metric, string unit, string token) returns KPI|error {
-            if (!isAuthenticated(token)) {
-                return error("Authentication failed. Please log in.");
-            }
+
 
         sql:ParameterizedQuery query = `UPDATE KPIs SET name=${name}, metric=${metric}, unit=${unit} WHERE id=${kpiId} AND userId=${userId}`;
         var response = p1DB->execute(query);

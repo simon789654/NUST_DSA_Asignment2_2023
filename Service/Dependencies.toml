@@ -399,7 +399,7 @@ modules = [
 ]
 
 [[package]]
-org = "matheusmulundu"
+org = "samsimon"
 name = "graphql"
 version = "0.1.0"
 dependencies = [
@@ -415,7 +415,7 @@ dependencies = [
 	{org = "ballerinax", name = "mysql"}
 ]
 modules = [
-	{org = "matheusmulundu", packageName = "graphql", moduleName = "graphql"},
-	{org = "matheusmulundu", packageName = "graphql", moduleName = "graphql.mysql"}
+	{org = "samsimon", packageName = "graphql", moduleName = "graphql"},
+	{org = "samsimon", packageName = "graphql", moduleName = "graphql.mysql"}
 ]
 
