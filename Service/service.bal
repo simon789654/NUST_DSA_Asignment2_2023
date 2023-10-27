@@ -9,18 +9,23 @@ import ballerina/crypto;
 // import ballerina/lang.'string;
 
 
-mysql:Client p1DB = check new("localhost", "root", "", "assignment2", 3307);
+mysql:Client p1DB = check new("localhost", "root", "", "assignment2", 3306);
 
 
 // At the top level of your module
 map<string> authenticatedUsers = {};
+
+function isAuthenticated(string token) returns boolean {
+    return authenticatedUsers.hasKey(token);
+}
+
 
 service /graphql on new graphql:Listener(8080) {
 
 
         // Queries
         
-    resource function get user(int id, string token) returns User|error {
+    resource function get user(int id) returns User|error {
 
         sql:ParameterizedQuery query = `SELECT * FROM user WHERE id = ${id}`;
         stream<User, sql:Error?> resultStream = p1DB->query(query, User);
@@ -43,7 +48,7 @@ service /graphql on new graphql:Listener(8080) {
 
 
     //fecth department by ID
-    resource function get department(int id, string token) returns Department|error {
+    resource function get department(int id) returns Department|error {
         sql:ParameterizedQuery depQuery = `SELECT * FROM department WHERE id = ${id}`;
         stream<Department, sql:Error?> depStream = p1DB->query(depQuery);
 
@@ -73,7 +78,7 @@ service /graphql on new graphql:Listener(8080) {
 
 
     //fetch department objective by ID
-    resource function get departmentObjective(int id, string token) returns DepartmentObjective|error {
+    resource function get departmentObjective(int id) returns DepartmentObjective|error {
 
         sql:ParameterizedQuery objQuery = `SELECT * FROM departmentobjective WHERE id = ${id}`;
         stream<DepartmentObjective, sql:Error?> objStream = p1DB->query(objQuery);
@@ -90,7 +95,7 @@ service /graphql on new graphql:Listener(8080) {
 
 
     //fetch KPI by ID
-    resource function get kpi(int id, string token) returns KPI|error {     
+    resource function get kpi(int id) returns KPI|error {     
         sql:ParameterizedQuery kpiQuery = `SELECT * FROM kpi WHERE id = ${id}`;
         stream<KPI, sql:Error?> kpiStream = p1DB->query(kpiQuery);
 
@@ -182,8 +187,8 @@ service /graphql on new graphql:Listener(8080) {
     }
 
 
-    resource function get createUser(string firstName, string lastName, string jobTitle, string position, UserRole role, int departmentId, string token) returns User|error {
-        sql:ParameterizedQuery query = `INSERT INTO user(firstName, lastName, jobTitle, position, role, departmentId) VALUES(${firstName}, ${lastName}, ${jobTitle}, ${position}, ${role}, ${departmentId})`;
+    resource function get createUser(string username, string password, string firstName, string lastName, string jobTitle, string position, UserRole role, int departmentId) returns User|error {
+        sql:ParameterizedQuery query = `INSERT INTO user(username, password, firstName, lastName, jobTitle, position, role, departmentId) VALUES(${username}, ${password}, ${firstName}, ${lastName}, ${jobTitle}, ${position}, ${role}, ${departmentId})`;
         
         var response = p1DB->execute(query);
         
@@ -218,7 +223,7 @@ service /graphql on new graphql:Listener(8080) {
 
 
     // update user mutation
-    resource function get updateUser(int id, string firstName, string lastName, string jobTitle, string position, UserRole role, int departmentId, string token) returns User|error {
+    resource function get updateUser(int id, string firstName, string lastName, string jobTitle, string position, UserRole role, int departmentId) returns User|error {
         sql:ParameterizedQuery query = `UPDATE user SET firstName=${firstName}, lastName=${lastName}, jobTitle=${jobTitle}, position=${position}, role=${role}, departmentId=${departmentId} WHERE id=${id}`;
         
         var response = p1DB->execute(query);
@@ -240,7 +245,7 @@ service /graphql on new graphql:Listener(8080) {
     }
 
 
-    resource function get deleteUser(int id, string token) returns boolean|error {
+    resource function get deleteUser(int id) returns boolean|error {
 
         sql:ParameterizedQuery query = `DELETE FROM user WHERE id=${id}`;
         
@@ -254,7 +259,7 @@ service /graphql on new graphql:Listener(8080) {
     }
 
 
-    resource function get createDepartment(string name, string token) returns Department|error {
+    resource function get createDepartment(string name) returns Department|error {
         sql:ParameterizedQuery query = `INSERT INTO department(name) VALUES(${name})`;
         
         var response = p1DB->execute(query);
@@ -278,7 +283,7 @@ service /graphql on new graphql:Listener(8080) {
     }
 
 
-    resource function get updateDepartment(int id, string name, string token) returns Department|error {
+    resource function get updateDepartment(int id, string name) returns Department|error {
         sql:ParameterizedQuery query = `UPDATE department SET name=${name} WHERE id=${id}`;
         
         var response = p1DB->execute(query);
@@ -295,7 +300,7 @@ service /graphql on new graphql:Listener(8080) {
     }
 
 
-    resource function get deleteDepartment(int id, string token) returns boolean|error {       
+    resource function get deleteDepartment(int id) returns boolean|error {       
         
         sql:ParameterizedQuery query = `DELETE FROM department WHERE id=${id}`;
         
@@ -309,7 +314,7 @@ service /graphql on new graphql:Listener(8080) {
     }
 
 
-    resource function get createDepartmentObjective(string name, float weight, int departmentId, string token) returns DepartmentObjective|error {
+    resource function get createDepartmentObjective(string name, float weight, int departmentId) returns DepartmentObjective|error {
     
         
         sql:ParameterizedQuery query = `INSERT INTO DepartmentObjective(name, weight, departmentId) VALUES(${name}, ${weight}, ${departmentId})`;
@@ -337,7 +342,7 @@ service /graphql on new graphql:Listener(8080) {
     }
 
 
-    resource function get updateDepartmentObjective(int id, string name, float weight, string token) returns DepartmentObjective|error {
+    resource function get updateDepartmentObjective(int id, string name, float weight) returns DepartmentObjective|error {
     
         
         sql:ParameterizedQuery query = `UPDATE DepartmentObjective SET name=${name}, weight=${weight} WHERE id=${id}`;
@@ -352,7 +357,7 @@ service /graphql on new graphql:Listener(8080) {
     }
 
 
-    resource function get deleteDepartmentObjective(int id, string token) returns boolean|error {
+    resource function get deleteDepartmentObjective(int id) returns boolean|error {
 
         sql:ParameterizedQuery query = `DELETE FROM DepartmentObjectives WHERE id=${id}`;
         
@@ -366,7 +371,7 @@ service /graphql on new graphql:Listener(8080) {
     }
 
 
-    resource function get createKPI(int userId, string name, string metric, string unit, string token) returns KPI|error {
+    resource function get createKPI(int userId, string name, string metric, string unit) returns KPI|error {
 
 
         sql:ParameterizedQuery query = `INSERT INTO kpi(userId, name, metric, unit) VALUES(${userId}, ${name}, ${metric}, ${unit})`;
@@ -389,7 +394,7 @@ service /graphql on new graphql:Listener(8080) {
 
 
 
-    resource function get updateKPI(int id, int userId, string name, string metric, string unit, float score, string token) returns KPI|error {
+    resource function get updateKPI(int id, int userId, string name, string metric, string unit, float score) returns KPI|error {
 
 
         sql:ParameterizedQuery query = `UPDATE kpi SET userId=${userId}, name=${name}, metric=${metric}, unit=${unit}, score=${score} WHERE id=${id}`;
@@ -411,7 +416,7 @@ service /graphql on new graphql:Listener(8080) {
     }
 
 
-    resource function get deleteKPI(int id, string token) returns boolean|error {
+    resource function get deleteKPI(int id) returns boolean|error {
 
 
         sql:ParameterizedQuery query = `DELETE FROM kpi WHERE id=${id}`;
@@ -426,7 +431,7 @@ service /graphql on new graphql:Listener(8080) {
 
 
     // Allow Supervisor to approve an Employee's KPIs
-    resource function get approveKPI(int supervisorId, int kpiId, string token) returns boolean|error {
+    resource function get approveKPI(int supervisorId, int kpiId) returns boolean|error {
 
 
         sql:ParameterizedQuery query = `UPDATE kpi SET approved=true WHERE id=${kpiId} AND userId IN (SELECT id FROM Users WHERE supervisorId=${supervisorId})`;
@@ -440,7 +445,7 @@ service /graphql on new graphql:Listener(8080) {
     }
 
     // Allow Supervisor to grade an Employee's KPIs
-    resource function get gradeKPI(int supervisorId, int kpiId, float grade, string token) returns boolean|error {
+    resource function get gradeKPI(int supervisorId, int kpiId, float grade) returns boolean|error {
 
 
         sql:ParameterizedQuery query = `UPDATE kpi SET grade=${grade} WHERE id=${kpiId} AND userId IN (SELECT id FROM Users WHERE supervisorId=${supervisorId})`;
@@ -453,7 +458,7 @@ service /graphql on new graphql:Listener(8080) {
         }
     }
     // Allow Employee to update their own KPIs
-    resource function get updateMyKPI(int userId, int kpiId, string name, string metric, string unit, string token) returns KPI|error {
+    resource function get updateMyKPI(int userId, int kpiId, string name, string metric, string unit) returns KPI|error {
 
 
         sql:ParameterizedQuery query = `UPDATE KPIs SET name=${name}, metric=${metric}, unit=${unit} WHERE id=${kpiId} AND userId=${userId}`;

@@ -281,7 +281,7 @@ modules = [
 ]
 
 [[package]]
-org = "matheusmulundu"
+org = "samsimon"
 name = "graphql_client"
 version = "0.1.0"
 dependencies = [
